@@ -1,7 +1,22 @@
 import { useState, useEffect } from "react";
-import { CheckCircle2 as DoneIcon, FileText as DoneFile } from "lucide-react";
+import {
+  CheckCircle2 as DoneIcon,
+  FileText as DoneFile,
+  User as FaUser,
+  Mail as FaEnvelope,
+  School as FaSchool,
+  Phone as FaPhone,
+  Trophy as FaTrophy,
+  Contact as FaIdCard,
+  CheckCircle2 as FaCircleCheck,
+  Info as FaCircleInfo,
+  Check as FaCheck,
+  Users as FaPeopleGroup,
+  Loader2,
+  Sparkles,
+  Download,
+} from "lucide-react";
 import { PDF_URL } from "../data/rules";
-import { User as FaUser, Mail as FaEnvelope, School as FaSchool, Phone as FaPhone, Trophy as FaTrophy, Contact as FaIdCard, CheckCircle2 as FaCircleCheck, Info as FaCircleInfo, Check as FaCheck, Users as FaPeopleGroup } from "lucide-react";
 import events from "../data/events";
 import { formatShort, formatTime } from "../utils";
 
@@ -15,30 +30,31 @@ const initialState = {
   teamName: "",
 };
 
-const fields = [
-  { name: "fullname", label: "Full name", type: "text", Icon: FaUser, placeholder: "Your full name" },
-  { name: "email", label: "Email", type: "email", Icon: FaEnvelope, placeholder: "you@example.com" },
-  { name: "college", label: "PUC College", type: "text", Icon: FaSchool, placeholder: "Your PUC college" },
-  { name: "phone", label: "Phone", type: "tel", Icon: FaPhone, placeholder: "10-digit mobile number", maxLength: 10 },
-  { name: "event", label: "Select event", type: "select", Icon: FaTrophy },
-  { name: "pucRoll", label: "PUC Roll No.", type: "text", Icon: FaIdCard, placeholder: "Your PUC roll number" },
-  { name: "teamName", label: "Team name (optional)", type: "text", Icon: FaPeopleGroup, placeholder: "Leave blank if you are registering solo", full: true },
+const formFields = [
+  { name: "fullname", label: "Full Name", type: "text", Icon: FaUser, placeholder: "e.g. Rahul Sharma" },
+  { name: "email", label: "Email Address", type: "email", Icon: FaEnvelope, placeholder: "you@example.com" },
+  { name: "college", label: "PUC College Name", type: "text", Icon: FaSchool, placeholder: "e.g. KLE PU College, Mahalingpur" },
+  { name: "phone", label: "Mobile Number", type: "tel", Icon: FaPhone, placeholder: "10-digit mobile number", maxLength: 10 },
+  { name: "event", label: "Select Event", type: "select", Icon: FaTrophy },
+  { name: "pucRoll", label: "PUC Roll Number / ID", type: "text", Icon: FaIdCard, placeholder: "e.g. 24PUC108" },
+  { name: "teamName", label: "Team Name (Optional for Group Events)", type: "text", Icon: FaPeopleGroup, placeholder: "Leave blank if participating solo", full: true },
 ];
 
 function RegistrationForm({ selectedEvent, info }) {
   const perks = [
-    "Open to PUC students only",
-    "Choose from 18 talent events",
-    `${formatShort(info.eventDate)} · ${formatTime(info.startTime)} – ${formatTime(info.endTime)}`,
-    "Team event? Use the same team name for every member",
+    "Open exclusively to PUC students",
+    "Choose from 18 individual & team competitions",
+    `${formatShort(info.eventDate)} · ${formatTime(info.startTime)} to ${formatTime(info.endTime)}`,
+    "Team event? Every member registers with the same Team Name",
+    "Participation certificates for all registered attendees",
   ];
 
   const [formData, setFormData] = useState(initialState);
-  const [message, setMessage] = useState(null);
+  const [feedback, setFeedback] = useState(null);
   const [loading, setLoading] = useState(false);
-  const [done, setDone] = useState(null);
+  const [confirmedData, setConfirmedData] = useState(null);
 
-  // When a card is tapped in the events grid, pre-select that event
+  // Pre-select when card in explorer is tapped
   useEffect(() => {
     if (selectedEvent && selectedEvent.name) {
       setFormData((prev) => ({ ...prev, event: selectedEvent.name }));
@@ -48,8 +64,9 @@ function RegistrationForm({ selectedEvent, info }) {
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
-    // Clear warnings while typing, keep success visible
-    setMessage((prev) => (prev && prev.type === "warning" ? null : prev));
+    if (feedback && feedback.type === "warning") {
+      setFeedback(null);
+    }
   };
 
   const handleSubmit = async (e) => {
@@ -65,15 +82,15 @@ function RegistrationForm({ selectedEvent, info }) {
       !event.trim() ||
       !pucRoll.trim()
     ) {
-      setMessage({
+      setFeedback({
         type: "warning",
-        text: "Please fill in all fields before submitting.",
+        text: "Please complete all required fields before submitting.",
       });
       return;
     }
 
     if (!email.includes("@") || !email.includes(".")) {
-      setMessage({
+      setFeedback({
         type: "warning",
         text: "Please enter a valid email address.",
       });
@@ -81,7 +98,7 @@ function RegistrationForm({ selectedEvent, info }) {
     }
 
     if (!/^\d{10}$/.test(phone.trim())) {
-      setMessage({
+      setFeedback({
         type: "warning",
         text: "Phone number must be exactly 10 digits.",
       });
@@ -101,98 +118,206 @@ function RegistrationForm({ selectedEvent, info }) {
         throw new Error(data.message || "Registration failed.");
       }
 
-      setMessage({
+      setFeedback({
         type: "success",
-        text: `Registered! ${fullname}, you are confirmed for "${event}". Take a screenshot of this message for your records.`,
+        text: `Registration confirmed for "${event}". You're all set!`,
       });
-      setDone({ name: fullname, event });
+      setConfirmedData({
+        name: fullname.trim(),
+        event: event.trim(),
+        college: college.trim(),
+        roll: pucRoll.trim(),
+      });
       window.dispatchEvent(new Event("aura:registered"));
       setFormData(initialState);
     } catch (error) {
-      setMessage({ type: "warning", text: error.message });
+      setFeedback({ type: "warning", text: error.message });
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <section className="register-card" id="register">
-      <aside className="side">
-        <h2>Reserve your spot</h2>
-        <p>Pick your event, fill in your details and you're in.</p>
-        <ul>
-          {perks.map((perk) => (
-            <li key={perk}>
-              <FaCheck /> {perk}
-            </li>
-          ))}
-        </ul>
-      </aside>
-
-      <div className="formwrap">
-        <form onSubmit={handleSubmit} noValidate>
-          <div className="form-grid">
-            {fields.map(({ name, label, type, Icon, placeholder, maxLength, full }) => (
-              <div className={`input-group${full ? " full" : ""}`} key={name}>
-                <label htmlFor={name}>
-                  <Icon /> {label}
-                </label>
-                {type === "select" ? (
-                  <select
-                    id={name}
-                    name={name}
-                    value={formData[name]}
-                    onChange={handleChange}
-                  >
-                    <option value="">-- Choose an event --</option>
-                    {events.map((ev) => (
-                      <option key={ev.id} value={ev.name}>
-                        {ev.name}
-                      </option>
-                    ))}
-                  </select>
-                ) : (
-                  <input
-                    id={name}
-                    type={type}
-                    name={name}
-                    placeholder={placeholder}
-                    maxLength={maxLength}
-                    value={formData[name]}
-                    onChange={handleChange}
-                  />
-                )}
-              </div>
-            ))}
-          </div>
-
-          <button type="submit" className="btn-register" disabled={loading}>
-            <FaCircleCheck />
-            {loading ? "Submitting..." : "Confirm registration"}
-          </button>
-        </form>
-
-        {message && (
-          <div className={`message-box ${message.type}`} role="status">
-            {message.type === "success" ? <FaCircleCheck /> : <FaCircleInfo />}
-            <span>{message.text}</span>
-          </div>
-        )}
+    <section className="registration-section" id="register" aria-label="Registration Form">
+      <div className="section-header">
+        <div className="section-badge">
+          <Sparkles size={14} />
+          <span>JOIN THE EVENT</span>
+        </div>
+        <h2>Official Student Registration</h2>
+        <p className="section-subtitle">
+          Secure your participation in AI-AURA 2026. Instant confirmation with zero entry fee.
+        </p>
       </div>
-      {done && (
-        <div className="done-wrap" onClick={() => setDone(null)}>
-          <div className="done" role="dialog" aria-modal="true" aria-label="Registration confirmed" onClick={(e) => e.stopPropagation()}>
-            <div className="done-ico"><DoneIcon /></div>
-            <h3>You're in, {String(done.name).split(" ")[0]}!</h3>
-            <p>Registered for <b>{done.event}</b>.</p>
-            <ul>
-              <li><DoneIcon /> Registration begins at 9:00 AM on event day.</li>
-              <li><DoneIcon /> Carry your valid college ID and Aadhaar card.</li>
-              <li><DoneIcon /> Report at least 15 minutes before your event.</li>
+
+      <div className="registration-layout">
+        {/* Left Side: Information & Checklist */}
+        <aside className="registration-perks-card">
+          <div className="perks-head">
+            <h3>Event Guidelines</h3>
+            <p>Everything you need before submitting your entry</p>
+          </div>
+          <ul className="perks-list">
+            {perks.map((perk) => (
+              <li key={perk}>
+                <div className="perk-check"><FaCheck size={14} /></div>
+                <span>{perk}</span>
+              </li>
+            ))}
+          </ul>
+
+          <div className="perks-footer-note">
+            <DoneFile size={16} />
+            <span>Carry your college ID & Aadhaar card on event day for spot verification.</span>
+          </div>
+        </aside>
+
+        {/* Right Side: Form */}
+        <div className="registration-form-card">
+          <form onSubmit={handleSubmit} noValidate>
+            <div className="form-grid-layout">
+              {formFields.map(({ name, label, type, Icon, placeholder, maxLength, full }) => (
+                <div className={`form-field-group ${full ? "full-width" : ""}`} key={name}>
+                  <label htmlFor={name} className="field-label">
+                    <Icon size={14} />
+                    <span>{label}</span>
+                    {name !== "teamName" && <span className="req-star">*</span>}
+                  </label>
+
+                  {type === "select" ? (
+                    <div className="select-wrapper">
+                      <select
+                        id={name}
+                        name={name}
+                        value={formData[name]}
+                        onChange={handleChange}
+                        className="form-control"
+                      >
+                        <option value="">-- Choose an event --</option>
+                        {events.map((ev) => (
+                          <option key={ev.id} value={ev.name}>
+                            #{String(ev.id).padStart(2, "0")} · {ev.name} ({ev.category})
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  ) : (
+                    <input
+                      id={name}
+                      type={type}
+                      name={name}
+                      placeholder={placeholder}
+                      maxLength={maxLength}
+                      value={formData[name]}
+                      onChange={handleChange}
+                      className="form-control"
+                    />
+                  )}
+                </div>
+              ))}
+            </div>
+
+            <div className="form-actions-row">
+              <button
+                type="submit"
+                className="btn-primary form-submit-btn"
+                disabled={loading}
+              >
+                {loading ? (
+                  <>
+                    <Loader2 size={18} className="animate-spin" />
+                    <span>Confirming...</span>
+                  </>
+                ) : (
+                  <>
+                    <FaCircleCheck size={18} />
+                    <span>Confirm Registration</span>
+                  </>
+                )}
+              </button>
+            </div>
+          </form>
+
+          {feedback && (
+            <div
+              className={`form-feedback-box ${feedback.type === "success" ? "success" : "warning"}`}
+              role={feedback.type === "success" ? "status" : "alert"}
+            >
+              {feedback.type === "success" ? (
+                <FaCircleCheck size={18} />
+              ) : (
+                <FaCircleInfo size={18} />
+              )}
+              <span>{feedback.text}</span>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Confirmation Modal Dialog */}
+      {confirmedData && (
+        <div
+          className="modal-backdrop"
+          onClick={() => setConfirmedData(null)}
+          role="dialog"
+          aria-modal="true"
+          aria-label="Registration Successful"
+        >
+          <div
+            className="confirmation-dialog"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="conf-icon-wrap">
+              <DoneIcon size={36} />
+            </div>
+
+            <h3>You're In, {confirmedData.name.split(" ")[0]}!</h3>
+            <p className="conf-subtitle">
+              Successfully registered for <b>{confirmedData.event}</b>
+            </p>
+
+            <div className="conf-details-box">
+              <div className="conf-row">
+                <span>College:</span>
+                <b>{confirmedData.college}</b>
+              </div>
+              <div className="conf-row">
+                <span>Roll No:</span>
+                <b>{confirmedData.roll}</b>
+              </div>
+            </div>
+
+            <ul className="conf-instructions">
+              <li>
+                <DoneIcon size={15} />
+                <span>Reporting time: 09:00 AM on event day at the registration desk.</span>
+              </li>
+              <li>
+                <DoneIcon size={15} />
+                <span>Keep a screenshot of this confirmation for hassle-free entry.</span>
+              </li>
+              <li>
+                <DoneIcon size={15} />
+                <span>Bring your College ID card and Aadhaar card.</span>
+              </li>
             </ul>
-            <div className="done-actions">
-              <a className="cta small" href={PDF_URL} download="AI-AURA-2K26-Rules-and-Regulations.pdf"><DoneFile /> Download rules</a>
-              <button type="button" className="ghost-btn" onClick={() => setDone(null)}>Close</button>
+
+            <div className="conf-actions">
+              <a
+                className="btn-primary small"
+                href={PDF_URL}
+                download="AI-AURA-2K26-Rules-and-Regulations.pdf"
+              >
+                <Download size={15} />
+                <span>Download Rules PDF</span>
+              </a>
+              <button
+                type="button"
+                className="btn-ghost"
+                onClick={() => setConfirmedData(null)}
+              >
+                Close Window
+              </button>
             </div>
           </div>
         </div>

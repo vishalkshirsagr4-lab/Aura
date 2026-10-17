@@ -1,82 +1,106 @@
-# AI-AURA — PUC College Event Website (MERN)
+# AI-AURA 2026 — Premium Interactive 3D Web Application
 
-Event date: 6 November 2026 (Friday) · 18 events · PUC students only.
+AI-AURA is an immersive, production-grade web application for the annual inter-college talent symposium hosted by **KLE BCA & BBA College, Mahalingpur**, exclusively for Pre-University (PUC) students.
 
-## Two portals
-- **Student portal** — http://localhost:3000
-  Event list, announcements, countdown, registration form (with optional team name).
-- **Admin portal** — http://localhost:3000/admin
-  Login, dashboard counts (students, teams, colleges), registrations table, reports
-  (CSV download + print/PDF), announcements and event date/time/venue.
+Features 18 competition events across Arts, Quiz, Stage, Writing, and AI/Tech categories with real-time student registration, live attendee notifications, interactive 3D WebGL scenes, and an authenticated administrator control center.
 
-Admin login is set in `backend/.env`:
+---
+
+## 🎨 Visual Identity & Colour Tokens
+
+The application follows a carefully tuned, high-contrast, dark-first color system engineered for depth, accessibility, and visual richness:
+
+- **Background (Deep Space):** `#080B14`
+- **Secondary Background:** `#101626`
+- **Elevated Surface:** `#151D30`
+- **Primary Interactive Accent:** `#8B5CF6` (Vivid Violet)
+- **Secondary Focus Accent:** `#22D3EE` (Cyber Cyan)
+- **Status & Highlight Accent:** `#A7F3D0` (Mint / Success)
+- **Primary Typography:** `#F8FAFC` (High legibility)
+- **Secondary Typography:** `#A7B0C0`
+- **Muted Metadata:** `#738096`
+- **Subtle Borders:** `rgba(148, 163, 184, 0.16)`
+- **Accent Gradient:** `linear-gradient(135deg, #8B5CF6 0%, #6366F1 45%, #22D3EE 100%)`
+
+---
+
+## 🔮 Three.js 3D & GSAP Motion Architecture
+
+### 1. Three.js 3D Scenes (`frontend/src/scenes3d.js`)
+- **Hero "Aura Nexus" Scene:**
+  - A faceted geodesic polyhedral crystal core (`IcosahedronGeometry`) with inner pulsing gemstone and wireframe lattice.
+  - Dual concentric gyroscope orbital rings (`TorusGeometry`) rotating on contrasting gimbal planes.
+  - 8 orbiting polyhedra satellites with customized angular velocities and sinusoidal floating amplitudes.
+  - 220-particle atmospheric dust starfield with soft depth illumination.
+  - Pointer/touch parallax with smooth spring damping and scroll-linked vertical displacement.
+  - Device-aware LOD (limits particle count and geometry complexity on mobile, caps pixel ratio to 1.5).
+  - Memory-safe lifecycle: automatic unmounting and disposal of all geometries, materials, lights, and renderers, plus `IntersectionObserver` to halt the render loop when scrolled off-screen.
+- **Campus 3D Showcase (`CampusShowcase.js`):**
+  - Curved glass panel displaying the campus photograph with beveled metallic trim and a glowing cyan accent rim.
+  - Interactive drag-to-orbit physics with automatic inertia and spring-back.
+  - Instant toggle between Interactive 3D and full-resolution photograph.
+
+### 2. GSAP Animation System (`frontend/src/hooks/useReveal.js` & `frontend/src/components/Hero.js`)
+- **Coordinated Entrance Timeline:**
+  - Background stage and 3D canvas scale in gently.
+  - Badges and title animate into place with subtle perspective rotation.
+  - Countdown timer cards stagger in with spring easing.
+  - Interactive CTA buttons slide up into position.
+- **ScrollTrigger Section Reveals:**
+  - Staggered entrances for Announcements, Event Explorer, Rules, Facilities, and Seminars.
+  - Active section navigation highlighting in the floating capsule bar.
+- **Micro-Interactions & Accessibility:**
+  - Native support for `@media (prefers-reduced-motion: reduce)`: skips intensive animations while keeping all content immediately readable and interactive.
+
+---
+
+## 🚀 Portals & Core Functionality
+
+### 1. Student Portal (`/`)
+- **Sticky Navigation Bar:** Floating capsule with live reading progress bar, brand icon, section anchors, and responsive mobile drawer.
+- **Hero Section:** Live event countdown clock (Days / Hours / Mins / Secs), date badge, and direct call-to-action buttons.
+- **Live Registration Feed:** Floating toast in the bottom corner displaying recent student registrations with animated pulsing indicator.
+- **Event Explorer:** Interactive 18-event catalog with category filtering (Stage, Art & Craft, Writing, Quiz & Logic, AI & Digital), interest matcher ("Find your event in 10 seconds"), and search input. Clicking any card opens a modal sheet with complete rules, judging criteria, and a direct registration pre-fill action.
+- **Brochure & Rules Center:** Official rules brochure with one-click PDF download and Google Drive link, general rules breakdown, and event coordinator contacts.
+- **Academic Programs & Facilities:** Highlights of semester-wise value added certificate courses (BCA and BBA curriculum breakdown from Semesters I to VI).
+- **Seminars & Gallery:** Interactive slider of industry expert talks and campus photo grid with modal lightbox.
+- **Student Registration Form:** Validated multi-field submission with optional team name for group events, instant confirmation modal, and screenshot reminder.
+
+### 2. Admin Portal (`/admin`)
+- **Authentication:** Protected with JWT token authentication and brute-force protection.
+- **Dashboard KPI Cards:** Real-time counts of total registrations, colleges represented, solo vs. team participation, and top events.
+- **Registrations Table:** Filterable, searchable student list with date stamps, team information, and one-click deletion.
+- **Announcements Manager:** Create, update, and remove official alerts and bulletin board items.
+- **Event Settings:** Configure event dates, timings, venue address, and official social media channels.
+- **Reports:** Distribution breakdowns by competition category with printable summary.
+
+---
+
+## 🛠️ Installation & Development
+
+### Environment Variables (`.env.example` / `backend/.env`)
+```bash
+PORT=3000
+ADMIN_USERNAME=admin
+ADMIN_PASSWORD=admin123
+JWT_SECRET=ai-aura-default-jwt-secret-2026
+MONGO_URI=mongodb://127.0.0.1:27017/ai-aura
 ```
-ADMIN_USERNAME=SachinRS@143
-ADMIN_PASSWORD=Irana@123
-JWT_SECRET=...change this to a long random string...
+*Note: If MongoDB is offline, the backend automatically uses an in-memory storage layer so registrations and the admin panel remain 100% operational.*
+
+### Commands
+```bash
+# Install dependencies
+npm install
+
+# Build frontend production bundle
+npm run build
+
+# Start production server (serves frontend & backend on port 3000)
+npm start
+
+# Run development server
+npm run dev
 ```
-Username is not case-sensitive; the password is. Change these before going live.
 
-## How to Run
-1. Start MongoDB locally:  `mongod`
-2. Backend:
-   ```
-   cd backend
-   npm install
-   npm run dev        # http://localhost:5000
-   ```
-3. Frontend (new terminal):
-   ```
-   cd frontend
-   npm install
-   npm start          # http://localhost:3000
-   ```
-4. Student portal: http://localhost:3000 · Admin portal: http://localhost:3000/admin
-
-## What's new
-- 18 talent events (Quiz, Dance, Pencil Sketch ... Solo Instrumental), each with a React Icon (`frontend/src/data/events.js`).
-- Home page poster pop-up for AI-AURA 2K26 (`components/PosterPopup.js`): appears 3s after load, stays 12s, repeats every 40s. Edit the three numbers at the top of the file.
-- College photo as a 3D tilting background in the top banner (`components/Hero.js`).
-- Expert Seminars slider (auto-slides every 10s, swipe/arrows/dots) and Campus Moments photos (`components/CollegeGallery.js`, `data/gallery.js`, images in `public/images/gallery/`).
-
-- Rules & Regulations section (`components/RulesSection.js`, `data/rules.js`): all 18 events with rules, filters, general rules, prizes, contacts, PDF download (`public/downloads/`), Google Drive link and both college websites (klebcamahalingpur.com, klebbamahalingpur.com).
-- Default event date is now 6 Nov 2026 (as per the brochure). The admin can still change it.
-
-- Impact redesign: sticky nav with scroll progress, moving event ribbon, animated counters, scroll-reveal animations, "Find your event" picker, colourful event tiles that open a swipeable rules sheet (`components/EventExplorer.js`, `StickyNav.js`, `Marquee.js`, `StatsBand.js`).
-
-- Design system: Electric Indigo #4F46E5, Violet #8B5CF6, Cyan #06B6D4, Navy #0F172A on Soft White #F8FAFC, Inter font, Lucide icons (`lucide-react`), light theme by default with a working dark mode toggle (bottom-right button, remembered on the device). Colour tokens live at the top of `frontend/src/App.css`.
-- Admin Overview now has a registrations-over-time chart built from real registration dates.
-
-- Obsidian identity (dark by default, light optional): Obsidian #0B0D12, Midnight Navy #111827, Electric Blue #4F7CFF, Vivid Violet #8B5CF6, Neon Cyan #36E4FF, Soft White #F5F7FF, Muted #9CA3AF. Tokens at the top of `frontend/src/App.css`.
-- Live registration pop-ups (`components/LiveRegistrations.js`): rotate through the latest real registrations (first name + college + event only) using the public `GET /api/registrations/recent`. Nothing shows when there are no registrations. Email, phone and roll number are never exposed.
-- After a successful registration a confirmation modal appears. The old text promised an email, but the backend sends none, so the message was corrected.
-
-## 3D
-Real WebGL 3D (three.js, installed by `npm install`): floating 3D shapes behind the hero title,
-a drag-to-rotate 3D campus panel with your photo, 3D extruded title, and cards that lean toward
-the pointer. If a device has no WebGL, the site falls back to a flat tilt card automatically.
-Code: `frontend/src/scenes3d.js`.
-
-## Make it yours
-- **College photo:** your photo is already at `frontend/public/images/campus.jpg`. It shows in the
-  3D campus card, the *Clear view* (normal, uncropped photo) and as the hero background.
-  To use a sharper photo, replace that file (keep the name `campus.jpg`).
-- **Social links:** log in to /admin → *Event info* → fill Instagram / YouTube / Facebook / LinkedIn /
-  Website. They appear on the student portal instantly (blank links stay hidden).
-- **Certificate courses:** the semester lists in `frontend/src/data/college.js` are *sample entries* —
-  replace them with the courses your college actually runs.
-
-## Notes
-- Icons come from `react-icons` (Font Awesome 6 set), installed by `npm install`.
-- A "team" = students registering for the same event with the same team name.
-- "Students" counts unique email addresses; "Colleges" counts unique college names.
-
-## API
-| Method | Route | Access |
-|---|---|---|
-| POST | /api/registrations | public |
-| GET / DELETE | /api/registrations | admin |
-| POST | /api/auth/login | public |
-| GET | /api/announcements, /api/settings | public |
-| POST / PUT / DELETE | /api/announcements, PUT /api/settings | admin |
-# Aura
+Visit `http://localhost:3000` for the Student Portal and `http://localhost:3000/admin` for the Admin Portal.

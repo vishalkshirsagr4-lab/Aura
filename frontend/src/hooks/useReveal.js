@@ -1,24 +1,58 @@
 import { useEffect } from "react";
+import gsap from "gsap";
+import { ScrollTrigger } from "gsap/ScrollTrigger";
 
-// Adds the "in" class to every .reveal element when it scrolls into view
+gsap.registerPlugin(ScrollTrigger);
+
+/**
+ * High-performance GSAP ScrollTrigger reveal system.
+ * Animates sections into view with subtle, coordinated stagger,
+ * and handles prefers-reduced-motion instantly.
+ */
 export default function useReveal() {
   useEffect(() => {
-    const els = document.querySelectorAll(".reveal");
-    if (!("IntersectionObserver" in window)) {
-      els.forEach((e) => e.classList.add("in"));
+    const isReduced =
+      typeof window !== "undefined" &&
+      window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+    if (isReduced) {
+      document.querySelectorAll(".reveal").forEach((el) => {
+        el.classList.add("in");
+      });
       return undefined;
     }
-    const io = new IntersectionObserver(
-      (entries) =>
-        entries.forEach((en) => {
-          if (en.isIntersecting) {
-            en.target.classList.add("in");
-            io.unobserve(en.target);
+
+    const ctx = gsap.context(() => {
+      const elements = gsap.utils.toArray(".reveal");
+
+      elements.forEach((el) => {
+        gsap.fromTo(
+          el,
+          {
+            opacity: 0,
+            y: 32,
+          },
+          {
+            opacity: 1,
+            y: 0,
+            duration: 0.8,
+            ease: "power3.out",
+            scrollTrigger: {
+              trigger: el,
+              start: "top 86%",
+              toggleActions: "play none none none",
+              once: true,
+            },
+            onComplete: () => {
+              el.classList.add("in");
+            },
           }
-        }),
-      { threshold: 0.12 }
-    );
-    els.forEach((e) => io.observe(e));
-    return () => io.disconnect();
+        );
+      });
+    });
+
+    return () => {
+      ctx.revert();
+    };
   }, []);
 }

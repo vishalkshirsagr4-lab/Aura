@@ -1,0 +1,7 @@
+{
+  "name": "AI-AURA · PUC College Events",
+  "description": "AI-AURA - college tech event for PUC students on 6 November 2026",
+  "capabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}

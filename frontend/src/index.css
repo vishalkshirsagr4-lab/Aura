@@ -1,12 +1,217 @@
-* {
+/* ==========================================================================
+   AURA DESIGN SYSTEM — DESIGN TOKENS & FOUNDATIONS
+   Primary Dark: #080B14 | Secondary: #101626 | Surface: #151D30
+   Accents: #8B5CF6 (Violet) | #22D3EE (Cyan) | #A7F3D0 (Mint)
+   ========================================================================== */
+
+:root {
+  /* Core Palette (Dark by default) */
+  --bg-primary: #080B14;
+  --bg-secondary: #101626;
+  --bg-surface: #151D30;
+  --bg-surface-elevated: #1B243B;
+  --bg-surface-glass: rgba(21, 29, 48, 0.75);
+
+  /* Accents */
+  --accent-primary: #8B5CF6;
+  --accent-primary-hover: #7C3AED;
+  --accent-primary-rgb: 139, 92, 246;
+  --accent-secondary: #22D3EE;
+  --accent-secondary-rgb: 34, 211, 238;
+  --accent-highlight: #A7F3D0;
+  --accent-highlight-rgb: 167, 243, 208;
+
+  /* Typography */
+  --text-primary: #F8FAFC;
+  --text-secondary: #A7B0C0;
+  --text-muted: #738096;
+  --text-inverse: #080B14;
+
+  /* Borders & Dividers */
+  --border-subtle: rgba(148, 163, 184, 0.16);
+  --border-medium: rgba(148, 163, 184, 0.28);
+  --border-accent: rgba(139, 92, 246, 0.45);
+  --border-focus: rgba(34, 211, 238, 0.65);
+
+  /* Status Colors */
+  --status-success: #34D399;
+  --status-warning: #FBBF24;
+  --status-error: #FB7185;
+
+  /* Gradients */
+  --gradient-accent: linear-gradient(135deg, #8B5CF6 0%, #6366F1 45%, #22D3EE 100%);
+  --gradient-card: linear-gradient(180deg, rgba(27, 36, 59, 0.6) 0%, rgba(21, 29, 48, 0.95) 100%);
+  --gradient-glow: radial-gradient(circle, rgba(139, 92, 246, 0.16) 0%, rgba(34, 211, 238, 0.08) 50%, transparent 70%);
+
+  /* Shadows */
+  --shadow-sm: 0 2px 6px rgba(0, 0, 0, 0.35);
+  --shadow-md: 0 10px 24px -6px rgba(0, 0, 0, 0.5), 0 0 16px -4px rgba(139, 92, 246, 0.12);
+  --shadow-lg: 0 20px 40px -12px rgba(0, 0, 0, 0.65), 0 0 30px -8px rgba(139, 92, 246, 0.18);
+  --shadow-glow: 0 0 35px -5px rgba(139, 92, 246, 0.3);
+
+  /* Spacing Scale */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-12: 48px;
+  --space-16: 64px;
+  --space-24: 96px;
+
+  /* Radii */
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 24px;
+  --radius-full: 9999px;
+
+  /* Transitions */
+  --ease-smooth: cubic-bezier(0.16, 1, 0.3, 1);
+  --transition-fast: 0.15s var(--ease-smooth);
+  --transition-normal: 0.25s var(--ease-smooth);
+  --transition-slow: 0.45s var(--ease-smooth);
+
+  /* Legacy aliases for backward compatibility */
+  --bg: var(--bg-primary);
+  --surface: var(--bg-surface);
+  --border: var(--border-subtle);
+  --field: var(--bg-surface-elevated);
+  --text: var(--text-primary);
+  --muted: var(--text-secondary);
+  --primary: var(--accent-primary);
+  --accent: var(--accent-primary);
+  --cyan: var(--accent-secondary);
+  --success: var(--status-success);
+  --warning: var(--status-warning);
+  --error: var(--status-error);
+}
+
+/* Light Theme Support */
+html[data-theme="light"] {
+  --bg-primary: #F8FAFC;
+  --bg-secondary: #EDF2F7;
+  --bg-surface: #FFFFFF;
+  --bg-surface-elevated: #F1F5F9;
+  --bg-surface-glass: rgba(255, 255, 255, 0.85);
+
+  --text-primary: #0F172A;
+  --text-secondary: #475569;
+  --text-muted: #64748B;
+  --text-inverse: #FFFFFF;
+
+  --border-subtle: rgba(148, 163, 184, 0.25);
+  --border-medium: rgba(148, 163, 184, 0.4);
+  --border-accent: rgba(139, 92, 246, 0.5);
+
+  --shadow-sm: 0 2px 6px rgba(15, 23, 42, 0.06);
+  --shadow-md: 0 10px 24px -6px rgba(15, 23, 42, 0.1), 0 0 16px -4px rgba(139, 92, 246, 0.1);
+  --shadow-lg: 0 20px 40px -12px rgba(15, 23, 42, 0.14), 0 0 30px -8px rgba(139, 92, 246, 0.12);
+
+  --bg: var(--bg-primary);
+  --surface: var(--bg-surface);
+  --border: var(--border-subtle);
+  --field: var(--bg-surface-elevated);
+  --text: var(--text-primary);
+  --muted: var(--text-secondary);
+}
+
+/* ==========================================================================
+   CSS RESETS & BASE TYPOGRAPHY
+   ========================================================================== */
+
+*, *::before, *::after {
   margin: 0;
   padding: 0;
   box-sizing: border-box;
 }
 
+html {
+  scroll-behavior: smooth;
+  font-size: 16px;
+  -webkit-text-size-adjust: 100%;
+}
+
 body {
-  font-family: "Inter", "Geist", system-ui, "Segoe UI", Roboto, sans-serif;
-  background: var(--bg);
-  color: var(--text);
+  font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
   min-height: 100vh;
+  line-height: 1.6;
+  overflow-x: hidden;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Atmospheric Ambient Background */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -2;
+  pointer-events: none;
+  background:
+    radial-gradient(55rem 40rem at 10% -10%, rgba(139, 92, 246, 0.14), transparent 60%),
+    radial-gradient(45rem 35rem at 90% 10%, rgba(34, 211, 238, 0.10), transparent 55%),
+    radial-gradient(40rem 30rem at 50% 100%, rgba(167, 243, 208, 0.05), transparent 60%);
+}
+
+html[data-theme="dark"] body::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  opacity: 0.35;
+  background-image:
+    linear-gradient(rgba(148, 163, 184, 0.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(148, 163, 184, 0.04) 1px, transparent 1px);
+  background-size: 40px 40px;
+  mask-image: radial-gradient(ellipse at 50% 10%, #000 30%, transparent 80%);
+  -webkit-mask-image: radial-gradient(ellipse at 50% 10%, #000 30%, transparent 80%);
+}
+
+/* Accessible Keyboard Focus Indicators */
+:focus-visible {
+  outline: 2px solid var(--accent-secondary);
+  outline-offset: 3px;
+  border-radius: var(--radius-sm);
+}
+
+/* Reduced Motion Respect */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.001s !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001s !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 9px;
+  height: 9px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--bg-primary);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--bg-surface-elevated);
+  border-radius: var(--radius-full);
+  border: 2px solid var(--bg-primary);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--accent-primary);
+}
+
+/* Selection */
+::selection {
+  background: rgba(139, 92, 246, 0.35);
+  color: var(--text-primary);
 }

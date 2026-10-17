@@ -1,61 +1,91 @@
 import { useState, useEffect, useCallback, useRef } from "react";
-import { Presentation as FaChalkboardUser, Images as FaImages, X as FaXmark, ChevronLeft as FaChevronLeft, ChevronRight as FaChevronRight, Calendar as FaCalendarDay, Users as FaUsers, Building2 as FaBuilding } from "lucide-react";
+import {
+  Presentation as FaChalkboardUser,
+  Images as FaImages,
+  X as FaXmark,
+  ChevronLeft as FaChevronLeft,
+  ChevronRight as FaChevronRight,
+  Calendar as FaCalendarDay,
+  Users as FaUsers,
+  Building2 as FaBuilding,
+  Sparkles,
+} from "lucide-react";
 import { SEMINARS, PHOTOS } from "../data/gallery";
 
-// Seconds between automatic slides
-const SLIDE_SECONDS = 10;
+const SLIDE_INTERVAL_SECONDS = 8;
 
 function CollegeGallery() {
-  // one lightbox for both lists: { list, index }
-  const [box, setBox] = useState(null);
+  const [lightbox, setLightbox] = useState(null); // { list, index }
+  const trackRef = useRef(null);
+  const pausedRef = useRef(false);
+  const [activeSlide, setActiveSlide] = useState(0);
 
-  // ---- Seminar slider: moves one card every SLIDE_SECONDS, swipe/arrows also work ----
-  const track = useRef(null);
-  const paused = useRef(false);
-  const [active, setActive] = useState(0);
-
-  const step = () => {
-    const el = track.current;
+  const getStepWidth = () => {
+    const el = trackRef.current;
     if (!el || !el.firstElementChild) return 0;
     const gap = parseFloat(getComputedStyle(el).columnGap) || 16;
     return el.firstElementChild.offsetWidth + gap;
   };
-  const slide = useCallback((dir) => {
-    const el = track.current;
+
+  const slideBy = useCallback((dir) => {
+    const el = trackRef.current;
     if (!el) return;
-    const atEnd = el.scrollLeft + el.clientWidth >= el.scrollWidth - 4;
-    const atStart = el.scrollLeft <= 4;
-    if (dir > 0 && atEnd) el.scrollTo({ left: 0, behavior: "smooth" });
-    else if (dir < 0 && atStart) el.scrollTo({ left: el.scrollWidth, behavior: "smooth" });
-    else el.scrollBy({ left: dir * step(), behavior: "smooth" });
+    const atEnd = el.scrollLeft + el.clientWidth >= el.scrollWidth - 8;
+    const atStart = el.scrollLeft <= 8;
+
+    if (dir > 0 && atEnd) {
+      el.scrollTo({ left: 0, behavior: "smooth" });
+    } else if (dir < 0 && atStart) {
+      el.scrollTo({ left: el.scrollWidth, behavior: "smooth" });
+    } else {
+      el.scrollBy({ left: dir * getStepWidth(), behavior: "smooth" });
+    }
   }, []);
-  const goTo = (i) => track.current && track.current.scrollTo({ left: i * step(), behavior: "smooth" });
-  const onScroll = () => {
-    const w = step();
-    if (w) setActive(Math.min(SEMINARS.length - 1, Math.round(track.current.scrollLeft / w)));
+
+  const goToSlide = (i) => {
+    if (trackRef.current) {
+      trackRef.current.scrollTo({ left: i * getStepWidth(), behavior: "smooth" });
+    }
+  };
+
+  const handleTrackScroll = () => {
+    const w = getStepWidth();
+    if (w && trackRef.current) {
+      const idx = Math.min(
+        SEMINARS.length - 1,
+        Math.round(trackRef.current.scrollLeft / w)
+      );
+      setActiveSlide(idx);
+    }
   };
 
   useEffect(() => {
     const id = setInterval(() => {
-      if (!paused.current && !document.hidden) slide(1);
-    }, SLIDE_SECONDS * 1000);
+      if (!pausedRef.current && !document.hidden) {
+        slideBy(1);
+      }
+    }, SLIDE_INTERVAL_SECONDS * 1000);
     return () => clearInterval(id);
-  }, [slide]);
+  }, [slideBy]);
 
-  const items = box ? box.list : [];
-  const cur = box ? items[box.index] : null;
+  const items = lightbox ? lightbox.list : [];
+  const currentItem = lightbox ? items[lightbox.index] : null;
 
-  const move = useCallback(
-    (d) => setBox((b) => (b ? { ...b, index: (b.index + d + b.list.length) % b.list.length } : b)),
+  const moveLightbox = useCallback(
+    (dir) => {
+      setLightbox((b) =>
+        b ? { ...b, index: (b.index + dir + b.list.length) % b.list.length } : b
+      );
+    },
     []
   );
 
   useEffect(() => {
-    if (!box) return undefined;
+    if (!lightbox) return undefined;
     const onKey = (e) => {
-      if (e.key === "Escape") setBox(null);
-      if (e.key === "ArrowRight") move(1);
-      if (e.key === "ArrowLeft") move(-1);
+      if (e.key === "Escape") setLightbox(null);
+      if (e.key === "ArrowRight") moveLightbox(1);
+      if (e.key === "ArrowLeft") moveLightbox(-1);
     };
     window.addEventListener("keydown", onKey);
     document.body.style.overflow = "hidden";
@@ -63,128 +93,184 @@ function CollegeGallery() {
       window.removeEventListener("keydown", onKey);
       document.body.style.overflow = "";
     };
-  }, [box, move]);
+  }, [lightbox, moveLightbox]);
 
   return (
-    <section className="gallery">
-      <div className="section-title">
-        <h2>
-          <FaChalkboardUser /> EXPERT SEMINARS
-        </h2>
-        <p>Industry professionals from Bengaluru's top companies teach our students every semester</p>
+    <section className="gallery-section" id="seminars" aria-label="Seminars and Campus Life">
+      {/* 1. Expert Seminars Header */}
+      <div className="section-header">
+        <div className="section-badge">
+          <FaChalkboardUser size={14} />
+          <span>INDUSTRY CONNECT</span>
+        </div>
+        <h2>Guest Talks & Expert Seminars</h2>
+        <p className="section-subtitle">
+          Engineers, startup founders, and corporate tech leads from Bengaluru guide our students every semester
+        </p>
       </div>
 
+      {/* Seminars Carousel */}
       <div
-        className="slider"
-        onPointerEnter={() => (paused.current = true)}
-        onPointerLeave={() => (paused.current = false)}
-        onTouchStart={() => (paused.current = true)}
-        onTouchEnd={() => setTimeout(() => (paused.current = false), 4000)}
+        className="seminars-carousel"
+        onPointerEnter={() => (pausedRef.current = true)}
+        onPointerLeave={() => (pausedRef.current = false)}
+        onTouchStart={() => (pausedRef.current = true)}
+        onTouchEnd={() => setTimeout(() => (pausedRef.current = false), 3500)}
       >
-        <button type="button" className="slide-nav prev" aria-label="Previous seminar" onClick={() => slide(-1)}>
-          <FaChevronLeft />
+        <button
+          type="button"
+          className="carousel-nav-btn prev"
+          aria-label="Previous seminar"
+          onClick={() => slideBy(-1)}
+        >
+          <FaChevronLeft size={20} />
         </button>
-        <div className="seminar-track" ref={track} onScroll={onScroll}>
-          {SEMINARS.map((s, i) => (
-          <article className="seminar tilt" key={s.id}>
-            <button
-              type="button"
-              className="seminar-img"
-              onClick={() => setBox({ list: SEMINARS, index: i })}
-              aria-label={`Open poster: ${s.title}`}
-            >
-              <img src={s.img} alt={`${s.title} seminar poster`} loading="lazy" />
-            </button>
-            <div className="seminar-body">
-              <h3>{s.title}</h3>
-              <p className="seminar-who">
-                <strong>{s.speaker}</strong> · {s.role}
-              </p>
-              <p className="seminar-meta">
-                <FaBuilding /> {s.org}
-              </p>
-              <div className="seminar-tags">
-                <span>
-                  <FaCalendarDay /> {s.date}
-                </span>
-                <span>
-                  <FaUsers /> {s.audience}
-                </span>
+
+        <div className="seminars-track" ref={trackRef} onScroll={handleTrackScroll}>
+          {SEMINARS.map((s, idx) => (
+            <article className="seminar-card" key={s.id}>
+              <div
+                className="seminar-image-wrap"
+                onClick={() => setLightbox({ list: SEMINARS, index: idx })}
+                role="button"
+                tabIndex={0}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") setLightbox({ list: SEMINARS, index: idx });
+                }}
+                aria-label={`View full poster: ${s.title}`}
+              >
+                <img src={s.img} alt={`${s.title} poster`} loading="lazy" />
+                <span className="expand-overlay-pill">Click to expand</span>
               </div>
-            </div>
-          </article>
-        ))}
+
+              <div className="seminar-card-body">
+                <h3 className="seminar-card-title">{s.title}</h3>
+                <p className="seminar-speaker">
+                  <b>{s.speaker}</b> · {s.role}
+                </p>
+                <p className="seminar-org">
+                  <FaBuilding size={14} />
+                  <span>{s.org}</span>
+                </p>
+                <div className="seminar-card-meta">
+                  <span className="meta-pill">
+                    <FaCalendarDay size={13} />
+                    <span>{s.date}</span>
+                  </span>
+                  <span className="meta-pill">
+                    <FaUsers size={13} />
+                    <span>{s.audience}</span>
+                  </span>
+                </div>
+              </div>
+            </article>
+          ))}
         </div>
-        <button type="button" className="slide-nav next" aria-label="Next seminar" onClick={() => slide(1)}>
-          <FaChevronRight />
+
+        <button
+          type="button"
+          className="carousel-nav-btn next"
+          aria-label="Next seminar"
+          onClick={() => slideBy(1)}
+        >
+          <FaChevronRight size={20} />
         </button>
       </div>
-      <div className="slide-dots">
+
+      {/* Carousel Dot Indicators */}
+      <div className="carousel-dots-row" role="tablist" aria-label="Seminar slides">
         {SEMINARS.map((s, i) => (
           <button
             type="button"
             key={s.id}
-            className={i === active ? "on" : ""}
+            className={`carousel-dot ${i === activeSlide ? "active" : ""}`}
             aria-label={`Go to seminar ${i + 1}`}
-            onClick={() => goTo(i)}
+            onClick={() => goToSlide(i)}
           />
         ))}
       </div>
 
-      <div className="section-title photos-title">
-        <h2>
-          <FaImages /> CAMPUS MOMENTS
-        </h2>
-        <p>Our students, our campus and our achievements</p>
+      {/* 2. Campus Moments Photo Grid */}
+      <div className="section-header photos-header">
+        <div className="section-badge">
+          <FaImages size={14} />
+          <span>CAMPUS LIFE</span>
+        </div>
+        <h2>Life at KLE Mahalingpur</h2>
+        <p className="section-subtitle">
+          Certificates, hackathon projects, student cohorts, and innovation on campus
+        </p>
       </div>
 
-      <div className="photo-grid">
+      <div className="photo-moments-grid">
         {PHOTOS.map((p, i) => (
           <button
             type="button"
             key={p.id}
-            className={`photo ${p.wide ? "wide" : ""}`}
-            onClick={() => setBox({ list: PHOTOS, index: i })}
+            className={`photo-moment-item ${p.wide ? "wide" : ""}`}
+            onClick={() => setLightbox({ list: PHOTOS, index: i })}
             aria-label={p.caption}
           >
             <img src={p.img} alt={p.caption} loading="lazy" />
-            <span>{p.caption}</span>
+            <div className="photo-caption-gradient">
+              <span>{p.caption}</span>
+            </div>
           </button>
         ))}
       </div>
 
-      {cur && (
-        <div className="lightbox" role="dialog" aria-modal="true" onClick={() => setBox(null)}>
-          <button type="button" className="lb-close" aria-label="Close" onClick={() => setBox(null)}>
-            <FaXmark />
-          </button>
+      {/* Lightbox Modal Dialog */}
+      {currentItem && (
+        <div
+          className="lightbox-backdrop"
+          role="dialog"
+          aria-modal="true"
+          onClick={() => setLightbox(null)}
+        >
           <button
             type="button"
-            className="lb-nav prev"
-            aria-label="Previous"
+            className="lightbox-close-btn"
+            aria-label="Close lightbox"
+            onClick={() => setLightbox(null)}
+          >
+            <FaXmark size={20} />
+          </button>
+
+          <button
+            type="button"
+            className="lightbox-nav-btn prev"
+            aria-label="Previous image"
             onClick={(e) => {
               e.stopPropagation();
-              move(-1);
+              moveLightbox(-1);
             }}
           >
-            <FaChevronLeft />
+            <FaChevronLeft size={24} />
           </button>
-          <figure onClick={(e) => e.stopPropagation()}>
-            <img src={cur.img} alt={cur.title || cur.caption} />
-            <figcaption>
-              {cur.title || cur.caption} · {box.index + 1}/{items.length}
+
+          <figure className="lightbox-figure" onClick={(e) => e.stopPropagation()}>
+            <img
+              src={currentItem.img}
+              alt={currentItem.title || currentItem.caption}
+            />
+            <figcaption className="lightbox-caption">
+              <b>{currentItem.title || currentItem.caption}</b>
+              <span className="lightbox-counter">
+                {lightbox.index + 1} of {items.length}
+              </span>
             </figcaption>
           </figure>
+
           <button
             type="button"
-            className="lb-nav next"
-            aria-label="Next"
+            className="lightbox-nav-btn next"
+            aria-label="Next image"
             onClick={(e) => {
               e.stopPropagation();
-              move(1);
+              moveLightbox(1);
             }}
           >
-            <FaChevronRight />
+            <FaChevronRight size={24} />
           </button>
         </div>
       )}

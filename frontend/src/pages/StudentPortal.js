@@ -5,6 +5,7 @@ import Marquee from "../components/Marquee";
 import StatsBand from "../components/StatsBand";
 import EventExplorer from "../components/EventExplorer";
 import RulesSection from "../components/RulesSection";
+import CampusShowcase from "../components/CampusShowcase";
 import CollegeFacilities from "../components/CollegeFacilities";
 import CollegeGallery from "../components/CollegeGallery";
 import LiveRegistrations from "../components/LiveRegistrations";
@@ -20,12 +21,12 @@ import { DEFAULT_INFO } from "../utils";
 function StudentPortal() {
   useTilt();
   useReveal();
-  // { name, key } — key changes on every click so re-selecting the same event still works
+
   const [selectedEvent, setSelectedEvent] = useState(null);
   const [info, setInfo] = useState(DEFAULT_INFO);
   const [notices, setNotices] = useState([]);
 
-  // Event info + announcements are managed from the admin portal
+  // Fetch settings & announcements
   useEffect(() => {
     api("/api/settings")
       .then((data) => setInfo({ ...DEFAULT_INFO, ...data }))
@@ -48,8 +49,9 @@ function StudentPortal() {
       <div className="reveal"><StatsBand /></div>
       <div className="reveal"><EventExplorer onSelect={pick} /></div>
       <div className="reveal"><RulesSection /></div>
-      <div className="reveal" id="college"><CollegeFacilities /></div>
-      <div className="reveal" id="seminars"><CollegeGallery /></div>
+      <div className="reveal"><CampusShowcase info={info} /></div>
+      <div className="reveal"><CollegeFacilities /></div>
+      <div className="reveal"><CollegeGallery /></div>
       <div className="reveal"><RegistrationForm selectedEvent={selectedEvent} info={info} /></div>
       <Footer info={info} />
     </div>

@@ -1,382 +1,593 @@
 import * as THREE from "three";
 
-/* Real 3D (WebGL) scenes for AI-AURA, built with three.js:
-   - createHeroScene:   floating 3D shapes behind the hero title
-   - createCampusScene: the college photo on a curved 3D panel you can drag */
+/**
+ * AURA THREE.JS 3D ENGINE
+ * High-performance, memory-safe, immersive 3D scenes with WebGL detection,
+ * pointer-based parallax, gyroscope orbital rings, and automatic lifecycle disposal.
+ */
 
-const reducedMotion = () =>
-  typeof window.matchMedia === "function" &&
+// Respect reduced motion
+export const isReducedMotion = () =>
+  typeof window !== "undefined" &&
+  window.matchMedia &&
   window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
-function makeRenderer(canvas) {
+// Safe WebGL Renderer Creator
+function createSafeRenderer(canvas) {
   try {
-    const renderer = new THREE.WebGLRenderer({ canvas, alpha: true, antialias: true });
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
-    renderer.outputEncoding = THREE.sRGBEncoding;
+    const isMobile = typeof window !== "undefined" && window.innerWidth < 768;
+    const renderer = new THREE.WebGLRenderer({
+      canvas,
+      alpha: true,
+      antialias: !isMobile,
+      powerPreference: "high-performance",
+      stencil: false,
+      depth: true,
+    });
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, isMobile ? 1.5 : 2));
+    if (THREE.sRGBEncoding) {
+      renderer.outputEncoding = THREE.sRGBEncoding;
+    }
+    renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    renderer.toneMappingExposure = 1.1;
     return renderer;
-  } catch (e) {
-    return null; // no WebGL on this device
+  } catch (err) {
+    console.warn("WebGL renderer creation failed:", err);
+    return null;
   }
 }
 
-function fit(renderer, camera, canvas) {
-  const w = canvas.parentElement.clientWidth || 1;
-  const h = canvas.parentElement.clientHeight || 1;
+// Responsive Camera & Canvas Resizer
+function resizeToParent(renderer, camera, canvas) {
+  if (!canvas || !canvas.parentElement) return;
+  const w = canvas.parentElement.clientWidth || 300;
+  const h = canvas.parentElement.clientHeight || 300;
   renderer.setSize(w, h, false);
   camera.aspect = w / h;
   camera.updateProjectionMatrix();
 }
 
-// Runs frame(t) every animation frame, but only while the canvas is on screen
-function startLoop(canvas, frame) {
+// Viewport-aware Animation Loop
+function runViewportLoop(canvas, onFrame) {
   const clock = new THREE.Clock();
-  let raf = 0;
-  let running = true;
-  let visible = true;
-  const io = new IntersectionObserver(([entry]) => {
-    visible = entry.isIntersecting;
-  });
-  io.observe(canvas);
-  const tick = () => {
-    if (!running) return;
-    raf = requestAnimationFrame(tick);
-    if (visible) frame(clock.getElapsedTime());
+  let rafId = 0;
+  let isRunning = true;
+  let isInView = true;
+
+  let observer = null;
+  if (typeof IntersectionObserver !== "undefined") {
+    observer = new IntersectionObserver(
+      ([entry]) => {
+        isInView = entry.isIntersecting;
+      },
+      { threshold: 0.05 }
+    );
+    observer.observe(canvas);
+  }
+
+  const loop = () => {
+    if (!isRunning) return;
+    rafId = requestAnimationFrame(loop);
+    if (isInView) {
+      const delta = clock.getDelta();
+      const elapsed = clock.getElapsedTime();
+      onFrame(elapsed, delta);
+    }
   };
-  tick();
+  loop();
+
   return () => {
-    running = false;
-    cancelAnimationFrame(raf);
-    io.disconnect();
+    isRunning = false;
+    cancelAnimationFrame(rafId);
+    if (observer) {
+      observer.disconnect();
+    }
   };
 }
 
-/* ---------------- Hero: floating 3D shapes ---------------- */
+/* ==========================================================================
+   1. HERO SCENE: AURA NEXUS (Sculptural Polyhedral Core + Gyroscope Rings)
+   ========================================================================== */
 export function createHeroScene(canvas) {
-  const renderer = makeRenderer(canvas);
+  if (!canvas) return null;
+  const renderer = createSafeRenderer(canvas);
   if (!renderer) return null;
 
-  const FOV = 50;
-  const CAM_Z = 9;
+  const isMobile = window.innerWidth < 768;
+  const FOV = isMobile ? 55 : 46;
+  const CAM_Z = isMobile ? 9.2 : 8.0;
+
   const scene = new THREE.Scene();
   const camera = new THREE.PerspectiveCamera(FOV, 1, 0.1, 100);
   camera.position.set(0, 0, CAM_Z);
 
-  scene.add(new THREE.AmbientLight(0xffffff, 0.6));
-  const pink = new THREE.PointLight(0x36e4ff, 1.7, 40);
-  pink.position.set(-6, 4, 6);
-  const blue = new THREE.PointLight(0x7ab8ff, 1.5, 40);
-  blue.position.set(6, -3, 5);
-  scene.add(pink, blue);
+  // Lighting with Violet (#8B5CF6), Cyan (#22D3EE), and Mint (#A7F3D0)
+  const ambientLight = new THREE.AmbientLight(0xffffff, 0.65);
+  scene.add(ambientLight);
 
-  const geos = [
-    new THREE.IcosahedronGeometry(0.6, 0),
-    new THREE.OctahedronGeometry(0.6, 0),
-    new THREE.TorusGeometry(0.5, 0.18, 16, 40),
-    new THREE.BoxGeometry(0.8, 0.8, 0.8),
-    new THREE.TetrahedronGeometry(0.7, 0),
+  const cyanLight = new THREE.PointLight(0x22d3ee, 2.4, 45);
+  cyanLight.position.set(-6, 5, 6);
+  scene.add(cyanLight);
+
+  const violetLight = new THREE.PointLight(0x8b5cf6, 2.2, 45);
+  violetLight.position.set(6, -4, 5);
+  scene.add(violetLight);
+
+  const mintLight = new THREE.DirectionalLight(0xa7f3d0, 0.85);
+  mintLight.position.set(0, 6, 4);
+  scene.add(mintLight);
+
+  // Group containing the central floating composition
+  const mainGroup = new THREE.Group();
+  scene.add(mainGroup);
+
+  // Central Core: Geodesic Crystal
+  const coreGeo = new THREE.IcosahedronGeometry(isMobile ? 1.25 : 1.55, 1);
+  const coreMat = new THREE.MeshStandardMaterial({
+    color: 0x8b5cf6,
+    metalness: 0.35,
+    roughness: 0.18,
+    wireframe: false,
+    transparent: true,
+    opacity: 0.88,
+    flatShading: true,
+  });
+  const coreMesh = new THREE.Mesh(coreGeo, coreMat);
+  mainGroup.add(coreMesh);
+
+  // Core Wireframe Overlay
+  const wireGeo = new THREE.WireframeGeometry(coreGeo);
+  const wireMat = new THREE.LineBasicMaterial({
+    color: 0x22d3ee,
+    transparent: true,
+    opacity: 0.45,
+  });
+  const wireMesh = new THREE.LineSegments(wireGeo, wireMat);
+  mainGroup.add(wireMesh);
+
+  // Inner Pulsing Octahedron
+  const innerGeo = new THREE.OctahedronGeometry(isMobile ? 0.65 : 0.85, 0);
+  const innerMat = new THREE.MeshStandardMaterial({
+    color: 0xa7f3d0,
+    metalness: 0.8,
+    roughness: 0.2,
+    emissive: 0x22d3ee,
+    emissiveIntensity: 0.3,
+  });
+  const innerMesh = new THREE.Mesh(innerGeo, innerMat);
+  mainGroup.add(innerMesh);
+
+  // Gyroscope Orbital Rings (Concentric)
+  const ring1Geo = new THREE.TorusGeometry(isMobile ? 2.2 : 2.7, 0.038, 16, 120);
+  const ring1Mat = new THREE.MeshStandardMaterial({
+    color: 0x22d3ee,
+    metalness: 0.7,
+    roughness: 0.2,
+    emissive: 0x22d3ee,
+    emissiveIntensity: 0.25,
+  });
+  const ring1 = new THREE.Mesh(ring1Geo, ring1Mat);
+  ring1.rotation.x = Math.PI / 3.5;
+  mainGroup.add(ring1);
+
+  const ring2Geo = new THREE.TorusGeometry(isMobile ? 3.0 : 3.7, 0.028, 16, 140);
+  const ring2Mat = new THREE.MeshStandardMaterial({
+    color: 0x8b5cf6,
+    metalness: 0.6,
+    roughness: 0.25,
+    emissive: 0x8b5cf6,
+    emissiveIntensity: 0.2,
+  });
+  const ring2 = new THREE.Mesh(ring2Geo, ring2Mat);
+  ring2.rotation.y = Math.PI / 4;
+  ring2.rotation.x = -Math.PI / 5;
+  mainGroup.add(ring2);
+
+  // Orbiting Satellites (Geometries around the core)
+  const satGeos = [
+    new THREE.TetrahedronGeometry(0.35, 0),
+    new THREE.BoxGeometry(0.4, 0.4, 0.4),
+    new THREE.OctahedronGeometry(0.36, 0),
+    new THREE.IcosahedronGeometry(0.38, 0),
+    new THREE.TorusGeometry(0.28, 0.08, 12, 32),
   ];
-  const colors = [0x9db4ff, 0x8b5cf6, 0x7df0ff, 0x7ad8ff, 0x9db4ff];
+  const satColors = [0x22d3ee, 0x8b5cf6, 0xa7f3d0, 0x6366f1, 0x38bdf8];
+  const satellites = [];
 
-  const items = [];
-  for (let i = 0; i < 18; i++) {
+  const satCount = isMobile ? 5 : 8;
+  for (let i = 0; i < satCount; i++) {
+    const geo = satGeos[i % satGeos.length];
     const mat = new THREE.MeshStandardMaterial({
-      color: colors[i % colors.length],
-      metalness: 0.35,
+      color: satColors[i % satColors.length],
+      metalness: 0.5,
       roughness: 0.25,
       flatShading: true,
       transparent: true,
-      opacity: 0.92,
+      opacity: 0.9,
     });
-    const mesh = new THREE.Mesh(geos[i % geos.length], mat);
-    const side = i % 2 ? 1 : -1;
-    mesh.scale.setScalar(0.45 + Math.random() * 0.75);
-    mesh.userData = {
-      nx: side * (0.55 + Math.random() * 0.45), // fraction of the visible half-width (keeps the middle clear for text)
-      z: -3 + Math.random() * 5,
-      y0: (Math.random() - 0.5) * 6,
-      rx: (Math.random() - 0.5) * 0.01 + 0.004,
-      ry: (Math.random() - 0.5) * 0.012 + 0.004,
-      phase: Math.random() * Math.PI * 2,
-      speed: 0.4 + Math.random() * 0.6,
-    };
-    scene.add(mesh);
-    items.push(mesh);
+    const mesh = new THREE.Mesh(geo, mat);
+    const radius = (isMobile ? 2.5 : 3.4) + Math.random() * 1.6;
+    const speed = (0.2 + Math.random() * 0.4) * (i % 2 === 0 ? 1 : -1);
+    const angle = (i / satCount) * Math.PI * 2;
+    const yOffset = (Math.random() - 0.5) * 2.2;
+    mesh.userData = { radius, speed, angle, yOffset, rotSpeed: 0.015 + Math.random() * 0.02 };
+    mainGroup.add(mesh);
+    satellites.push(mesh);
   }
 
-  const ringMat = new THREE.MeshBasicMaterial({ color: 0x9db4ff, transparent: true, opacity: 0.5 });
-  const ring = new THREE.Mesh(new THREE.TorusGeometry(3.2, 0.05, 16, 120), ringMat);
-  ring.position.z = -3;
-  const ring2Mat = new THREE.MeshBasicMaterial({ color: 0x7df0ff, transparent: true, opacity: 0.3 });
-  const ring2 = new THREE.Mesh(new THREE.TorusGeometry(4.3, 0.03, 16, 140), ring2Mat);
-  ring2.position.z = -4;
-  scene.add(ring, ring2);
-
-  const COUNT = 360;
-  const positions = new Float32Array(COUNT * 3);
-  for (let i = 0; i < COUNT; i++) {
-    positions[i * 3] = (Math.random() - 0.5) * 24;
-    positions[i * 3 + 1] = (Math.random() - 0.5) * 12;
-    positions[i * 3 + 2] = -6 + Math.random() * 10;
+  // Floating Atmospheric Dust / Starfield
+  const particleCount = isMobile ? 80 : 220;
+  const pPositions = new Float32Array(particleCount * 3);
+  for (let i = 0; i < particleCount; i++) {
+    pPositions[i * 3] = (Math.random() - 0.5) * 22;
+    pPositions[i * 3 + 1] = (Math.random() - 0.5) * 14;
+    pPositions[i * 3 + 2] = -5 + Math.random() * 10;
   }
-  const pGeo = new THREE.BufferGeometry();
-  pGeo.setAttribute("position", new THREE.BufferAttribute(positions, 3));
-  const pMat = new THREE.PointsMaterial({ color: 0xffffff, size: 0.05, transparent: true, opacity: 0.8 });
-  const points = new THREE.Points(pGeo, pMat);
-  scene.add(points);
+  const particleGeo = new THREE.BufferGeometry();
+  particleGeo.setAttribute("position", new THREE.BufferAttribute(pPositions, 3));
+  const particleMat = new THREE.PointsMaterial({
+    color: 0xa7f3d0,
+    size: isMobile ? 0.04 : 0.055,
+    transparent: true,
+    opacity: 0.75,
+  });
+  const particles = new THREE.Points(particleGeo, particleMat);
+  scene.add(particles);
 
-  const mouse = { x: 0, y: 0 };
-  const onMove = (e) => {
+  // Mouse & Touch Parallax
+  const targetPointer = { x: 0, y: 0 };
+  const currentPointer = { x: 0, y: 0 };
+
+  const onPointerMove = (e) => {
     const r = canvas.getBoundingClientRect();
-    mouse.x = ((e.clientX - r.left) / r.width - 0.5) * 2;
-    mouse.y = ((e.clientY - r.top) / r.height - 0.5) * 2;
+    if (r.width > 0 && r.height > 0) {
+      targetPointer.x = ((e.clientX - r.left) / r.width - 0.5) * 2;
+      targetPointer.y = ((e.clientY - r.top) / r.height - 0.5) * 2;
+    }
   };
-  window.addEventListener("pointermove", onMove);
+  window.addEventListener("pointermove", onPointerMove, { passive: true });
 
-  const layout = () => {
-    fit(renderer, camera, canvas);
-    items.forEach((m) => {
-      const u = m.userData;
-      const halfW = Math.tan((FOV / 2) * (Math.PI / 180)) * (CAM_Z - u.z) * camera.aspect;
-      m.position.set(u.nx * halfW, u.y0, u.z);
-    });
+  const onResize = () => {
+    resizeToParent(renderer, camera, canvas);
   };
-  window.addEventListener("resize", layout);
-  layout();
+  window.addEventListener("resize", onResize);
+  onResize();
 
-  const frame = (t) => {
-    items.forEach((m) => {
-      const u = m.userData;
-      m.rotation.x += u.rx;
-      m.rotation.y += u.ry;
-      m.position.y = u.y0 + Math.sin(t * u.speed + u.phase) * 0.35;
-    });
-    ring.rotation.x = t * 0.15;
-    ring.rotation.y = t * 0.1;
-    ring2.rotation.x = -t * 0.08;
-    ring2.rotation.z = t * 0.06;
-    points.rotation.y = t * 0.02;
-    camera.position.x += (mouse.x * 1.2 - camera.position.x) * 0.04;
-    camera.position.y += (-mouse.y * 0.8 - camera.position.y) * 0.04;
-    camera.lookAt(0, 0, 0);
+  // Scroll offset listener for subtle camera float
+  let scrollProgress = 0;
+  const onScroll = () => {
+    const scrollY = window.scrollY || window.pageYOffset || 0;
+    scrollProgress = Math.min(1, Math.max(0, scrollY / 700));
+  };
+  window.addEventListener("scroll", onScroll, { passive: true });
+
+  // Animation Loop
+  const reduced = isReducedMotion();
+  const renderFrame = (elapsed) => {
+    // Parallax damping
+    if (!reduced) {
+      currentPointer.x += (targetPointer.x - currentPointer.x) * 0.045;
+      currentPointer.y += (targetPointer.y - currentPointer.y) * 0.045;
+
+      // Rotate central core
+      coreMesh.rotation.y = elapsed * 0.22;
+      coreMesh.rotation.x = elapsed * 0.14;
+      wireMesh.rotation.y = coreMesh.rotation.y;
+      wireMesh.rotation.x = coreMesh.rotation.x;
+
+      // Inner crystal counter-rotation
+      innerMesh.rotation.y = -elapsed * 0.4;
+      innerMesh.rotation.z = elapsed * 0.3;
+      const pulse = 1 + Math.sin(elapsed * 2.2) * 0.06;
+      innerMesh.scale.set(pulse, pulse, pulse);
+
+      // Gyroscope rings
+      ring1.rotation.z = elapsed * 0.35;
+      ring1.rotation.y = Math.sin(elapsed * 0.25) * 0.35;
+      ring2.rotation.z = -elapsed * 0.25;
+      ring2.rotation.x = Math.cos(elapsed * 0.2) * 0.4;
+
+      // Satellites orbital motion
+      satellites.forEach((sat) => {
+        const u = sat.userData;
+        const curAngle = u.angle + elapsed * u.speed;
+        sat.position.x = Math.cos(curAngle) * u.radius;
+        sat.position.z = Math.sin(curAngle) * (u.radius * 0.75);
+        sat.position.y = u.yOffset + Math.sin(elapsed * 1.4 + u.angle) * 0.35;
+        sat.rotation.x += u.rotSpeed;
+        sat.rotation.y += u.rotSpeed;
+      });
+
+      // Ambient particle drift
+      particles.rotation.y = elapsed * 0.03;
+      particles.rotation.x = elapsed * 0.015;
+
+      // Camera parallax + scroll link
+      camera.position.x = currentPointer.x * 0.85;
+      camera.position.y = -currentPointer.y * 0.65 - scrollProgress * 1.2;
+      camera.lookAt(0, -scrollProgress * 0.5, 0);
+    }
+
     renderer.render(scene, camera);
   };
 
-  const stop = reducedMotion() ? (frame(0), () => {}) : startLoop(canvas, frame);
+  const stopLoop = reduced
+    ? (renderFrame(0), () => {})
+    : runViewportLoop(canvas, renderFrame);
 
+  // Safe Cleanup
   return () => {
-    stop();
-    window.removeEventListener("pointermove", onMove);
-    window.removeEventListener("resize", layout);
-    geos.forEach((g) => g.dispose());
-    items.forEach((m) => m.material.dispose());
-    [ring, ring2].forEach((m) => {
-      m.geometry.dispose();
-      m.material.dispose();
-    });
-    pGeo.dispose();
-    pMat.dispose();
+    stopLoop();
+    window.removeEventListener("pointermove", onPointerMove);
+    window.removeEventListener("resize", onResize);
+    window.removeEventListener("scroll", onScroll);
+
+    // Disposing geometries
+    coreGeo.dispose();
+    wireGeo.dispose();
+    innerGeo.dispose();
+    ring1Geo.dispose();
+    ring2Geo.dispose();
+    satGeos.forEach((g) => g.dispose());
+    particleGeo.dispose();
+
+    // Disposing materials
+    coreMat.dispose();
+    wireMat.dispose();
+    innerMat.dispose();
+    ring1Mat.dispose();
+    ring2Mat.dispose();
+    satellites.forEach((s) => s.material.dispose());
+    particleMat.dispose();
+
     renderer.dispose();
   };
 }
 
-/* ---------------- Campus: the photo as a curved 3D panel ---------------- */
-function labelTexture(text) {
-  const c = document.createElement("canvas");
-  c.width = 1024;
-  c.height = 160;
-  const g = c.getContext("2d");
-  const r = 80;
-  g.fillStyle = "#ffffff";
-  g.beginPath();
-  g.moveTo(r, 0);
-  g.lineTo(1024 - r, 0);
-  g.arc(1024 - r, r, r, -Math.PI / 2, Math.PI / 2);
-  g.lineTo(r, 160);
-  g.arc(r, r, r, Math.PI / 2, Math.PI * 1.5);
-  g.fill();
-  g.fillStyle = "#4f7cff";
-  g.font = "800 64px system-ui, 'Segoe UI', Roboto, sans-serif";
-  g.textAlign = "center";
-  g.textBaseline = "middle";
-  g.fillText(text, 512, 84);
-  const tex = new THREE.CanvasTexture(c);
-  tex.encoding = THREE.sRGBEncoding;
-  return tex;
+/* ==========================================================================
+   2. CAMPUS SCENE: 3D PHOTO SLAB & AMBIENT PLATFORM
+   ========================================================================== */
+function createTagTexture(text) {
+  const canvas = document.createElement("canvas");
+  canvas.width = 1024;
+  canvas.height = 180;
+  const ctx = canvas.getContext("2d");
+  const r = 90;
+
+  // Glass Pill Background
+  ctx.fillStyle = "rgba(16, 22, 38, 0.95)";
+  ctx.beginPath();
+  ctx.moveTo(r, 0);
+  ctx.lineTo(1024 - r, 0);
+  ctx.arc(1024 - r, r, r, -Math.PI / 2, Math.PI / 2);
+  ctx.lineTo(r, 180);
+  ctx.arc(r, r, r, Math.PI / 2, Math.PI * 1.5);
+  ctx.fill();
+
+  // Border Accent
+  ctx.lineWidth = 6;
+  ctx.strokeStyle = "#8b5cf6";
+  ctx.stroke();
+
+  // Typography
+  ctx.fillStyle = "#f8fafc";
+  ctx.font = "bold 64px -apple-system, BlinkMacSystemFont, 'Inter', sans-serif";
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.fillText(text, 512, 92);
+
+  const texture = new THREE.CanvasTexture(canvas);
+  if (THREE.sRGBEncoding) texture.encoding = THREE.sRGBEncoding;
+  return texture;
 }
 
-export function createCampusScene(canvas, photoUrl, onReady, label = "KLE BCA & BBA College") {
-  const renderer = makeRenderer(canvas);
-  if (!renderer) return null;
+export function createCampusScene(
+  canvas,
+  photoUrl,
+  onReady,
+  label = "KLE BCA & BBA College"
+) {
+  if (!canvas) return null;
+  const renderer = createSafeRenderer(canvas);
+  if (!renderer) {
+    if (onReady) onReady(false);
+    return null;
+  }
 
-  const FOV = 38;
-  const W = 5.2; // photo width in scene units
-  const H = (W * 400) / 766; // keeps the photo's real shape (nothing is cropped)
+  const isMobile = window.innerWidth < 768;
+  const FOV = 36;
+  const W = 5.4;
+  const H = (W * 400) / 766;
 
   const scene = new THREE.Scene();
   const camera = new THREE.PerspectiveCamera(FOV, 1, 0.1, 100);
-  scene.add(new THREE.AmbientLight(0xffffff, 0.75));
-  const pink = new THREE.PointLight(0x36e4ff, 1.5, 40);
-  pink.position.set(-5, 3, 6);
-  const blue = new THREE.PointLight(0x7ab8ff, 1.3, 40);
-  blue.position.set(5, -2, 6);
-  scene.add(pink, blue);
+
+  // Lighting
+  scene.add(new THREE.AmbientLight(0xffffff, 0.8));
+  const cyanPoint = new THREE.PointLight(0x22d3ee, 2.0, 40);
+  cyanPoint.position.set(-5, 4, 6);
+  const violetPoint = new THREE.PointLight(0x8b5cf6, 1.8, 40);
+  violetPoint.position.set(5, -3, 6);
+  scene.add(cyanPoint, violetPoint);
 
   const group = new THREE.Group();
   scene.add(group);
 
-  // glass slab behind the photo
-  const slabGeo = new THREE.BoxGeometry(W + 0.5, H + 0.5, 0.3);
-  const slabMat = new THREE.MeshStandardMaterial({ color: 0x4f7cff, metalness: 0.6, roughness: 0.3 });
-  const slab = new THREE.Mesh(slabGeo, slabMat);
-  slab.position.z = -0.25;
-  const edgesGeo = new THREE.EdgesGeometry(slabGeo);
-  const edgesMat = new THREE.LineBasicMaterial({ color: 0x7df0ff });
-  const edges = new THREE.LineSegments(edgesGeo, edgesMat);
-  edges.position.z = -0.25;
-  group.add(slab, edges);
-
-  // the photo, bent into a gentle curve. MeshBasicMaterial = true colours, no lighting tint.
-  const photoGeo = new THREE.PlaneGeometry(W, H, 48, 1);
-  const p = photoGeo.attributes.position;
-  for (let i = 0; i < p.count; i++) {
-    const nx = p.getX(i) / (W / 2);
-    p.setZ(i, nx * nx * 0.35);
-  }
-  p.needsUpdate = true;
-  const tex = new THREE.TextureLoader().load(
-    photoUrl,
-    () => onReady && onReady(true),
-    undefined,
-    () => onReady && onReady(false)
-  );
-  tex.encoding = THREE.sRGBEncoding;
-  tex.anisotropy = renderer.capabilities.getMaxAnisotropy();
-  const photoMat = new THREE.MeshBasicMaterial({ map: tex });
-  const photo = new THREE.Mesh(photoGeo, photoMat);
-  group.add(photo);
-
-  // floating name tag in front of the photo
-  const labelTex = labelTexture(label);
-  const labelMat = new THREE.MeshBasicMaterial({ map: labelTex, transparent: true });
-  const labelGeo = new THREE.PlaneGeometry(3.4, (3.4 * 160) / 1024);
-  const tag = new THREE.Mesh(labelGeo, labelMat);
-  tag.position.set(-0.9, -H / 2 - 0.1, 1.15);
-  group.add(tag);
-
-  // floating shapes at different depths
-  const defs = [
-    [new THREE.OctahedronGeometry(0.28), 0x7df0ff, -3.1, 1.45, 0.9],
-    [new THREE.IcosahedronGeometry(0.24), 0x7ad8ff, 3.2, 1.2, 1.1],
-    [new THREE.BoxGeometry(0.32, 0.32, 0.32), 0x9db4ff, -3.3, -1.1, 0.7],
-    [new THREE.TorusGeometry(0.24, 0.08, 12, 28), 0xffd9f6, 3.3, -1.2, 0.95],
-    [new THREE.TetrahedronGeometry(0.3), 0x8b5cf6, 0.4, 1.9, 0.8],
-  ];
-  const shapes = defs.map(([geo, color, x, y, z], i) => {
-    const mesh = new THREE.Mesh(
-      geo,
-      new THREE.MeshStandardMaterial({ color, metalness: 0.4, roughness: 0.25, flatShading: true })
-    );
-    mesh.position.set(x, y, z);
-    mesh.userData = { y0: y, phase: i * 1.3 };
-    group.add(mesh);
-    return mesh;
+  // Glass slab behind the photo
+  const slabGeo = new THREE.BoxGeometry(W + 0.45, H + 0.45, 0.28);
+  const slabMat = new THREE.MeshStandardMaterial({
+    color: 0x151d30,
+    metalness: 0.6,
+    roughness: 0.25,
+    transparent: true,
+    opacity: 0.95,
   });
+  const slab = new THREE.Mesh(slabGeo, slabMat);
+  slab.position.z = -0.22;
+  group.add(slab);
 
-  // soft glow on the "floor"
-  const glowGeo = new THREE.CircleGeometry(3.6, 48);
-  const glowMat = new THREE.MeshBasicMaterial({ color: 0x9db4ff, transparent: true, opacity: 0.22 });
-  const glow = new THREE.Mesh(glowGeo, glowMat);
-  glow.rotation.x = -Math.PI / 2;
-  glow.position.y = -H / 2 - 0.55;
-  scene.add(glow);
+  // Glowing Edge Highlight
+  const edgeGeo = new THREE.EdgesGeometry(slabGeo);
+  const edgeMat = new THREE.LineBasicMaterial({
+    color: 0x22d3ee,
+    transparent: true,
+    opacity: 0.7,
+  });
+  const edgeLines = new THREE.LineSegments(edgeGeo, edgeMat);
+  edgeLines.position.z = -0.22;
+  group.add(edgeLines);
 
-  // interaction: drag to rotate, gentle hover tilt, springs back, idle sway
-  const view = { dragY: 0, dragX: 0, hoverY: 0, hoverX: 0 };
-  let dragging = false;
+  // Gently Curved Photo Plane
+  const photoGeo = new THREE.PlaneGeometry(W, H, 48, 1);
+  const pos = photoGeo.attributes.position;
+  for (let i = 0; i < pos.count; i++) {
+    const nx = pos.getX(i) / (W / 2);
+    pos.setZ(i, nx * nx * 0.32);
+  }
+  pos.needsUpdate = true;
+
+  let photoTexture = null;
+  const textureLoader = new THREE.TextureLoader();
+  photoTexture = textureLoader.load(
+    photoUrl,
+    () => {
+      if (onReady) onReady(true);
+    },
+    undefined,
+    () => {
+      if (onReady) onReady(false);
+    }
+  );
+  if (THREE.sRGBEncoding) photoTexture.encoding = THREE.sRGBEncoding;
+
+  const photoMat = new THREE.MeshBasicMaterial({ map: photoTexture });
+  const photoMesh = new THREE.Mesh(photoGeo, photoMat);
+  group.add(photoMesh);
+
+  // Name Tag
+  const tagTex = createTagTexture(label);
+  const tagMat = new THREE.MeshBasicMaterial({ map: tagTex, transparent: true });
+  const tagGeo = new THREE.PlaneGeometry(3.6, (3.6 * 180) / 1024);
+  const tagMesh = new THREE.Mesh(tagGeo, tagMat);
+  tagMesh.position.set(0, -H / 2 - 0.15, 0.95);
+  group.add(tagMesh);
+
+  // Glowing Platform Disk
+  const glowGeo = new THREE.CircleGeometry(3.8, 64);
+  const glowMat = new THREE.MeshBasicMaterial({
+    color: 0x8b5cf6,
+    transparent: true,
+    opacity: 0.2,
+  });
+  const glowMesh = new THREE.Mesh(glowGeo, glowMat);
+  glowMesh.rotation.x = -Math.PI / 2;
+  glowMesh.position.y = -H / 2 - 0.55;
+  scene.add(glowMesh);
+
+  // Interaction handlers (drag, spring, hover)
+  const viewState = { dragY: 0, dragX: 0, hoverY: 0, hoverX: 0 };
+  let isDragging = false;
   let lastX = 0;
   let lastY = 0;
-  const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 
-  const onDown = (e) => {
-    dragging = true;
+  const onPointerDown = (e) => {
+    isDragging = true;
     lastX = e.clientX;
     lastY = e.clientY;
     canvas.style.cursor = "grabbing";
     if (canvas.setPointerCapture) canvas.setPointerCapture(e.pointerId);
   };
-  const onMove = (e) => {
-    if (dragging) {
-      view.dragY = clamp(view.dragY + (e.clientX - lastX) * 0.008, -0.95, 0.95);
-      view.dragX = clamp(view.dragX + (e.clientY - lastY) * 0.005, -0.45, 0.45);
+
+  const onPointerMove = (e) => {
+    if (isDragging) {
+      const deltaX = (e.clientX - lastX) * 0.007;
+      const deltaY = (e.clientY - lastY) * 0.005;
+      viewState.dragY = Math.max(-0.85, Math.min(0.85, viewState.dragY + deltaX));
+      viewState.dragX = Math.max(-0.4, Math.min(0.4, viewState.dragX + deltaY));
       lastX = e.clientX;
       lastY = e.clientY;
     } else if (e.pointerType !== "touch") {
       const r = canvas.getBoundingClientRect();
-      view.hoverY = ((e.clientX - r.left) / r.width - 0.5) * 0.5;
-      view.hoverX = ((e.clientY - r.top) / r.height - 0.5) * 0.3;
+      if (r.width > 0 && r.height > 0) {
+        viewState.hoverY = ((e.clientX - r.left) / r.width - 0.5) * 0.4;
+        viewState.hoverX = ((e.clientY - r.top) / r.height - 0.5) * 0.25;
+      }
     }
   };
-  const onUp = () => {
-    dragging = false;
+
+  const onPointerUp = () => {
+    isDragging = false;
     canvas.style.cursor = "grab";
   };
-  const onLeave = () => {
-    view.hoverY = 0;
-    view.hoverX = 0;
+
+  const onPointerLeave = () => {
+    viewState.hoverY = 0;
+    viewState.hoverX = 0;
   };
+
   canvas.style.cursor = "grab";
-  canvas.addEventListener("pointerdown", onDown);
-  canvas.addEventListener("pointermove", onMove);
-  canvas.addEventListener("pointerup", onUp);
-  canvas.addEventListener("pointercancel", onUp);
-  canvas.addEventListener("pointerleave", onLeave);
+  canvas.addEventListener("pointerdown", onPointerDown);
+  canvas.addEventListener("pointermove", onPointerMove);
+  canvas.addEventListener("pointerup", onPointerUp);
+  canvas.addEventListener("pointercancel", onPointerUp);
+  canvas.addEventListener("pointerleave", onPointerLeave);
 
-  const layout = () => {
-    fit(renderer, camera, canvas);
-    // distance chosen so the panel fills ~70% of the width at any screen shape
-    const visibleW = W * 1.45;
-    camera.position.set(0, 0.15, visibleW / camera.aspect / (2 * Math.tan((FOV / 2) * (Math.PI / 180))));
+  const onResize = () => {
+    resizeToParent(renderer, camera, canvas);
+    const visibleWidth = W * (isMobile ? 1.6 : 1.45);
+    camera.position.set(
+      0,
+      0.1,
+      visibleWidth / camera.aspect / (2 * Math.tan((FOV / 2) * (Math.PI / 180)))
+    );
   };
-  window.addEventListener("resize", layout);
-  layout();
+  window.addEventListener("resize", onResize);
+  onResize();
 
-  const frame = (t) => {
-    if (!dragging) {
-      view.dragY += (0 - view.dragY) * 0.02;
-      view.dragX += (0 - view.dragX) * 0.02;
+  const reduced = isReducedMotion();
+  const renderFrame = (elapsed) => {
+    if (!isDragging) {
+      viewState.dragY += (0 - viewState.dragY) * 0.035;
+      viewState.dragX += (0 - viewState.dragX) * 0.035;
     }
-    const sway = reducedMotion() ? 0 : Math.sin(t * 0.6) * 0.16;
-    const ty = view.dragY + view.hoverY + sway - 0.12;
-    const tx = view.dragX + view.hoverX + 0.06;
-    group.rotation.y += (ty - group.rotation.y) * 0.08;
-    group.rotation.x += (tx - group.rotation.x) * 0.08;
-    shapes.forEach((m, i) => {
-      m.rotation.x += 0.01 + i * 0.002;
-      m.rotation.y += 0.012;
-      m.position.y = m.userData.y0 + Math.sin(t * 0.9 + m.userData.phase) * 0.12;
-    });
-    tag.position.y = -H / 2 - 0.1 + Math.sin(t * 1.1) * 0.04;
+
+    const idleSway = reduced ? 0 : Math.sin(elapsed * 0.8) * 0.12;
+    const targetRotY = viewState.dragY + viewState.hoverY + idleSway;
+    const targetRotX = viewState.dragX + viewState.hoverX + 0.04;
+
+    group.rotation.y += (targetRotY - group.rotation.y) * 0.075;
+    group.rotation.x += (targetRotX - group.rotation.x) * 0.075;
+
+    tagMesh.position.y = -H / 2 - 0.15 + Math.sin(elapsed * 1.5) * 0.035;
     renderer.render(scene, camera);
   };
 
-  const stop = startLoop(canvas, frame);
+  const stopLoop = reduced
+    ? (renderFrame(0), () => {})
+    : runViewportLoop(canvas, renderFrame);
 
   return () => {
-    stop();
-    window.removeEventListener("resize", layout);
-    canvas.removeEventListener("pointerdown", onDown);
-    canvas.removeEventListener("pointermove", onMove);
-    canvas.removeEventListener("pointerup", onUp);
-    canvas.removeEventListener("pointercancel", onUp);
-    canvas.removeEventListener("pointerleave", onLeave);
-    [slabGeo, edgesGeo, photoGeo, labelGeo, glowGeo].forEach((g) => g.dispose());
-    [slabMat, edgesMat, photoMat, labelMat, glowMat].forEach((m) => m.dispose());
-    shapes.forEach((m) => {
-      m.geometry.dispose();
-      m.material.dispose();
-    });
-    tex.dispose();
-    labelTex.dispose();
+    stopLoop();
+    window.removeEventListener("resize", onResize);
+    canvas.removeEventListener("pointerdown", onPointerDown);
+    canvas.removeEventListener("pointermove", onPointerMove);
+    canvas.removeEventListener("pointerup", onPointerUp);
+    canvas.removeEventListener("pointercancel", onPointerUp);
+    canvas.removeEventListener("pointerleave", onPointerLeave);
+
+    slabGeo.dispose();
+    slabMat.dispose();
+    edgeGeo.dispose();
+    edgeMat.dispose();
+    photoGeo.dispose();
+    photoMat.dispose();
+    if (photoTexture) photoTexture.dispose();
+    tagGeo.dispose();
+    tagMat.dispose();
+    tagTex.dispose();
+    glowGeo.dispose();
+    glowMat.dispose();
+
     renderer.dispose();
   };
 }
