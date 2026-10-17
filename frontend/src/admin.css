@@ -482,3 +482,32 @@ table.data-table tr:hover td {
     align-items: stretch;
   }
 }
+
+@media (max-width: 640px) {
+  .admin-top {
+    flex-direction: column;
+    align-items: flex-start;
+    padding: 1rem;
+    border-radius: var(--radius-lg);
+  }
+  .top-actions {
+    width: 100%;
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 0.4rem;
+  }
+  .top-actions .btn-ghost {
+    justify-content: center;
+    font-size: 0.78rem;
+    padding: 0.45rem 0.4rem;
+    text-align: center;
+  }
+  .tab {
+    padding: 0.55rem 0.95rem;
+    font-size: 0.84rem;
+  }
+  .admin-card {
+    padding: 1.25rem 1rem;
+    border-radius: var(--radius-lg);
+  }
+}
